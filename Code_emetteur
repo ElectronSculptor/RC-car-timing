@@ -8,7 +8,7 @@ Chaque seconde, envoie un nombre grâce à un émetteur 433 MHz
 #include <RH_ASK.h> // (fait partie de Radiohead)
 #include <SPI.h>
 
-RH_ASK driver(2000, 4, 5, 0);
+RH_ASK driver(2000, 4, 12, 0);
 
 char message[RH_ASK_MAX_MESSAGE_LEN]; 
 int compteur = 0;
