@@ -1,0 +1,36 @@
+/**********************************************************
+Radiohead_reception_433MHz
+Affiche dans le moniteur série l'information reçue par
+un récepteur 433 MHz.
+**********************************************************/
+
+#include <RH_ASK.h> // (fait partie de Radiohead)
+#include <SPI.h> 
+
+RH_ASK driver(2000, 4, 5, 0);
+
+void setup()
+{
+  Serial.begin(9600);
+  if (!driver.init())
+    Serial.println("Echec de l'initialisation de Radiohead");
+}
+
+void loop()
+{
+  uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+  uint8_t buflen = sizeof(buf);
+
+  if (driver.recv(buf, &buflen)) 
+  {
+    int i;
+
+    Serial.print("Message recu: ");
+
+    for (i = 0; i < buflen; i++)
+    {
+      Serial.write(buf[i]);
+    }
+    Serial.println("");
+  }
+}
