@@ -1,0 +1,70 @@
+/*
+ * To use this sketch you need to connect the VL53L4ED satellite sensor directly to the Nucleo board with wires in this way:
+ * pin 1 (GND) of the VL53L4ED satellite connected to GND of the Nucleo board
+ * pin 2 (VDD) of the VL53L4ED satellite connected to 3V3 pin of the Nucleo board
+ * pin 3 (SCL) of the VL53L4ED satellite connected to pin D15 (SCL) of the Nucleo board (G22 sur notre ESP)
+ * pin 4 (SDA) of the VL53L4ED satellite connected to pin D14 (SDA) of the Nucleo board (G21 sur notre ESP)
+ * pin 5 (GPIO1) of the VL53L4ED satellite connected to pin A2 of the Nucleo board
+ * pin 6 (XSHUT) of the VL53L4ED satellite connected to pin D3 of the Nucleo board
+ */
+/* Includes ------------------------------------------------------------------*/
+#include <vl53l4ed_class.h>
+
+#define DEV_I2C Wire
+#define SerialPort Serial
+// Components.
+VL53L4ED sensor_vl53l4ed_sat(&DEV_I2C, 3);
+
+/* Setup ---------------------------------------------------------------------*/
+
+
+void setup()
+{
+
+
+  // Initialize serial for output.
+  SerialPort.begin(500000);
+  SerialPort.println("Starting...");
+
+  // Initialize I2C bus.
+  DEV_I2C.begin();
+
+  // Configure VL53L4ED satellite component.
+  sensor_vl53l4ed_sat.begin();
+
+  //Initialize VL53L4ED satellite component.
+  sensor_vl53l4ed_sat.InitSensor();
+
+  // Start Measurements
+  sensor_vl53l4ed_sat.VL53L4ED_StartRanging();
+}
+
+void loop()
+{
+  uint8_t NewDataReady = 0;
+  VL53L4ED_ResultsData_t results;
+  uint8_t status;
+  char report[64];
+
+  do {
+    status = sensor_vl53l4ed_sat.VL53L4ED_CheckForDataReady(&NewDataReady);
+  } while (!NewDataReady);
+
+
+  if ((!status) && (NewDataReady != 0)) {
+    // (Mandatory) Clear HW interrupt to restart measurements
+    sensor_vl53l4ed_sat.VL53L4ED_ClearInterrupt();
+
+    // Read measured distance. RangeStatus = 0 means valid data
+    sensor_vl53l4ed_sat.VL53L4ED_GetResult(&results);
+    
+    unsigned long timestamp = millis();
+
+
+    snprintf(report, sizeof(report), "Time = %10lu ms, Distance = %5u mm\r\n",
+             timestamp,
+             results.distance_mm);
+    SerialPort.println(report);
+  }
+
+}
