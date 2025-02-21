@@ -22,9 +22,9 @@ void setup()
 
 void loop()
 {
-  compteur++;
 
-  itoa(compteur, message, 10); 
+  // ON ENVOIE UN ID UNIQUE, 450 PAR EXEMPLE
+  sprintf(message, "%d", 450); 
 
   driver.send((uint8_t *)message, strlen(message));
   driver.waitPacketSent();
