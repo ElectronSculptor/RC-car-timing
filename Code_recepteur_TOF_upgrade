@@ -1,0 +1,141 @@
+#include <vl53l4ed_class.h>
+#include <RH_ASK.h>
+#include <SPI.h>
+
+#define DEV_I2C Wire
+#define SerialPort Serial
+
+// TOF Sensor unique
+VL53L4ED sensor(&DEV_I2C, 3);
+
+// Module RF
+RH_ASK driver(2000, 4, 5, 0);
+
+// Paramètres de détection
+const int DETECTION_THRESHOLD = 100;      // Seuil de détection de voiture (mm)
+const int RESET_DISTANCE = 500;            // Seuil d'absence de voiture (mm)
+const int REBOUND_DELTA = 150;             // Variation indiquant un chevauchement (mm)
+const unsigned long OVERLAP_TIME_WINDOW = 500; // Fenêtre temporelle pour le chevauchement (ms)
+const unsigned long RF_OPEN_WINDOW = 300;  // Temps de réception RF après détection (ms)
+
+// États de détection
+enum TOFState { NO_CAR, CAR_PRESENT, OVERLAP_SUSPECT };
+TOFState currentState = NO_CAR;
+
+unsigned long lastEventTime = 0;
+unsigned int baselineDistance = 0;
+int carCount = 0;
+
+// Stockage des IDs détectés
+char lastDetectedID[10] = "";
+
+// Fonction pour recevoir les ID RF des voitures
+void receiveRF() {
+    uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+    uint8_t buflen = sizeof(buf);
+    
+    if (driver.recv(buf, &buflen)) {
+        buf[buflen] = '\0'; // Terminer la chaîne
+        Serial.print("RF ID received: ");
+        Serial.println((char*)buf);
+        
+        // Vérifier si c'est un ID déjà reçu
+        if (strcmp((char*)buf, lastDetectedID) != 0) {
+            strcpy(lastDetectedID, (char*)buf);
+            Serial.println("New car detected!");
+        }
+    } else {
+        Serial.println("RF: No ID received (ou collision).");
+    }
+}
+
+void setup() {
+    SerialPort.begin(9600);
+    SerialPort.println("Initializing TOF & RF system...");
+
+    DEV_I2C.begin();
+    
+    // Initialisation TOF
+    sensor.begin();
+    sensor.InitSensor();
+    sensor.VL53L4ED_StartRanging();
+    
+    // Initialisation RF
+    if (!driver.init()) {
+        SerialPort.println("RF init failed.");
+    }
+    
+    SerialPort.println("System ready. Waiting for cars...");
+}
+
+void loop() {
+    detectCar(sensor, currentState, lastEventTime, baselineDistance);
+}
+
+void detectCar(VL53L4ED &sensor, TOFState &currentState, unsigned long &lastEventTime, unsigned int &baselineDistance) {
+    uint8_t NewDataReady = 0;
+    VL53L4ED_ResultsData_t results;
+    uint8_t status;
+
+    do {
+        status = sensor.VL53L4ED_CheckForDataReady(&NewDataReady);
+    } while (!NewDataReady);
+
+    if (!status && NewDataReady != 0) {
+        sensor.VL53L4ED_ClearInterrupt();
+        sensor.VL53L4ED_GetResult(&results);
+        
+        unsigned int distance = results.distance_mm;
+        unsigned long now = millis();
+        
+        Serial.print("TOF reading: ");
+        Serial.print(distance);
+        Serial.println(" mm");
+
+        if (distance > RESET_DISTANCE) {
+            if (currentState != NO_CAR) {
+                currentState = NO_CAR;
+                Serial.println("No car detected. Resetting state.");
+            }
+        } else {
+            if (currentState == NO_CAR) {
+                if (distance < DETECTION_THRESHOLD) {
+                    currentState = CAR_PRESENT;
+                    baselineDistance = distance;
+                    lastEventTime = now;
+                    carCount++;
+                    Serial.print("Car detected (#");
+                    Serial.print(carCount);
+                    Serial.print(") Distance: ");
+                    Serial.print(distance);
+                    Serial.println(" mm");
+
+                    receiveRF();
+                }
+            }
+            else if (currentState == CAR_PRESENT) {
+                if (distance > (baselineDistance + REBOUND_DELTA)) {
+                    currentState = OVERLAP_SUSPECT;
+                    Serial.println("Overlap suspect detected.");
+                }
+            }
+            else if (currentState == OVERLAP_SUSPECT) {
+                if (distance < DETECTION_THRESHOLD) {
+                    if (now - lastEventTime < OVERLAP_TIME_WINDOW) {
+                        carCount++;
+                        lastEventTime = now;
+                        Serial.print("Car detected (overlap) (#");
+                        Serial.print(carCount);
+                        Serial.print(") Distance: ");
+                        Serial.print(distance);
+                        Serial.println(" mm");
+
+                        baselineDistance = distance;
+                        receiveRF();
+                    }
+                    currentState = CAR_PRESENT;
+                }
+            }
+        }
+    }
+}
