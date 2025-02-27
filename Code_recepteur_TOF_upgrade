@@ -87,15 +87,10 @@ void detectCar(VL53L4ED &sensor, TOFState &currentState, unsigned long &lastEven
         
         unsigned int distance = results.distance_mm;
         unsigned long now = millis();
-        
-        Serial.print("TOF reading: ");
-        Serial.print(distance);
-        Serial.println(" mm");
 
         if (distance > RESET_DISTANCE) {
             if (currentState != NO_CAR) {
                 currentState = NO_CAR;
-                Serial.println("No car detected. Resetting state.");
             }
         } else {
             if (currentState == NO_CAR) {
@@ -104,9 +99,13 @@ void detectCar(VL53L4ED &sensor, TOFState &currentState, unsigned long &lastEven
                     baselineDistance = distance;
                     lastEventTime = now;
                     carCount++;
+
+                    // Affichage uniquement lors d'une détection
                     Serial.print("Car detected (#");
                     Serial.print(carCount);
-                    Serial.print(") Distance: ");
+                    Serial.print(") at time: ");
+                    Serial.print(now);
+                    Serial.print(" ms, Distance: ");
                     Serial.print(distance);
                     Serial.println(" mm");
 
@@ -116,7 +115,6 @@ void detectCar(VL53L4ED &sensor, TOFState &currentState, unsigned long &lastEven
             else if (currentState == CAR_PRESENT) {
                 if (distance > (baselineDistance + REBOUND_DELTA)) {
                     currentState = OVERLAP_SUSPECT;
-                    Serial.println("Overlap suspect detected.");
                 }
             }
             else if (currentState == OVERLAP_SUSPECT) {
@@ -124,9 +122,12 @@ void detectCar(VL53L4ED &sensor, TOFState &currentState, unsigned long &lastEven
                     if (now - lastEventTime < OVERLAP_TIME_WINDOW) {
                         carCount++;
                         lastEventTime = now;
+                        
                         Serial.print("Car detected (overlap) (#");
                         Serial.print(carCount);
-                        Serial.print(") Distance: ");
+                        Serial.print(") at time: ");
+                        Serial.print(now);
+                        Serial.print(" ms, Distance: ");
                         Serial.print(distance);
                         Serial.println(" mm");
 
