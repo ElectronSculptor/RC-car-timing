@@ -1,9 +1,11 @@
 #include <WiFi.h>
-#include <HTTPClient.h>
 
-const char* ssid = "your_SSID";
-const char* password = "your_PASSWORD";
-const char* serverName = "http://raspberrypi_ip_address:5000/data";
+const char* ssid = "iPhone Gevorg";
+const char* password = "Artur2002";
+const char* host = "172.20.10.2"; // Replace with your Raspberry Pi's IP address
+const uint16_t port = 4000;
+
+WiFiClient client;
 
 void setup() {
   Serial.begin(115200);
@@ -15,30 +17,22 @@ void setup() {
   }
 
   Serial.println("Connected to WiFi");
+
+  if (!client.connect(host, port)) {
+    Serial.println("Connection to server failed");
+  } else {
+    Serial.println("Connected to server");
+  }
 }
 
 void loop() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(serverName);
-    http.addHeader("Content-Type", "application/json");
-
-    String jsonData = "{\"distance\": 123, \"carCount\": 1}";
-    int httpResponseCode = http.POST(jsonData);
-
-    if (httpResponseCode > 0) {
-      String response = http.getString();
-      Serial.println(httpResponseCode);
-      Serial.println(response);
-    } else {
-      Serial.print("Error on sending POST: ");
-      Serial.println(httpResponseCode);
-    }
-
-    http.end();
+  if (client.connected()) {
+    String data = "{\"distance\": 123, \"carCount\": 1}";
+    client.println(data);
+    Serial.println("Data sent: " + data);
   } else {
-    Serial.println("WiFi Disconnected");
+    Serial.println("Disconnected from server");
   }
 
-  delay(10000); // Send data every 10 seconds
+  delay(1000); // Send data every seconds
 }
