@@ -28,5 +28,4 @@ void loop()
 
   driver.send((uint8_t *)message, strlen(message));
   driver.waitPacketSent();
-  delay(1000);
 }
