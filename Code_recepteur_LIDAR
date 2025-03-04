@@ -24,13 +24,17 @@ void setup() {
 }
 
 void loop() {
+    // Definition buffer pour stocker les donnees RADIO 
+    uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+    uint8_t buflen = sizeof(buf);
+
+    // FONCTION LIDAR
   Wire.beginTransmission(SLAVE_ADDRESS);  // The I2C data transmission starts
   Wire.write(buf1,5);                       // send instructions
   Wire.endTransmission();                 // The I2C data transfer is complete
   Wire.requestFrom(SLAVE_ADDRESS, DATA_LENGTH); // Request data from an I2C device
   uint8_t data[DATA_LENGTH] = {0}; 
   uint16_t distance = 0, strength = 0; // Data variable
-  int16_t temperature = 0;
   int checksum = 0;
   int index = 0; 
   while (Wire.available() > 0 && index < DATA_LENGTH) {
@@ -39,18 +43,15 @@ void loop() {
   if (index == DATA_LENGTH) {
     distance = data[2] + data[3] * 256; //  DistanceValue
     strength = data[4] + data[5] * 256; // signal strength
-    temperature = data[6] + data[7] * 256; // Chip temperature
       Serial.print("Distance: ");
       Serial.print(distance);
       Serial.print(" cm, strength: ");
-      Serial.print(strength);
-      Serial.print(", temperature: ");
-      Serial.println(temperature / 8.0 - 256.0);
+      Serial.println(strength);
     
   } 
 
 
-
+  // TEST DE LA DISTANCE ET AFFICHAGE ID VOITURE SI DETECTE
   if (distance < 100) {
     if (driver.recv(buf, &buflen)) 
     {
@@ -63,6 +64,7 @@ void loop() {
         Serial.write(buf[i]);
       }
       Serial.println("");
+      delay(1000);
     }
   }
 }
