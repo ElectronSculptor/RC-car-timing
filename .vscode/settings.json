@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "code_recepteur_tof_upgrade": "cpp"
+        "code_recepteur_tof_upgrade": "cpp",
+        "code_lidar_only": "cpp"
     }
 }
