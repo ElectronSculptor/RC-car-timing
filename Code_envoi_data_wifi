@@ -1,15 +1,58 @@
 #include <WiFi.h>
+#include <FS.h>
+#include <SPIFFS.h>
 
+
+String ssid;
+String password;
+String host;
+uint16_t port;
+
+/*
 const char* ssid = "iPhone Gevorg";
 const char* password = "Artur2002";
 const char* host = "172.20.10.2"; // Replace with your Raspberry Pi's IP address
 const uint16_t port = 4000;
+*/
 
 WiFiClient client;
 
 void setup() {
   Serial.begin(115200);
-  WiFi.begin(ssid, password);
+
+  // ON TESTE LES MEMOIRES FLASH
+  if (!SPIFFS.begin(true)) {
+    Serial.println("An error has occurred while mounting SPIFFS");
+    return;
+  }
+
+  File file = SPIFFS.open("/config.txt");
+  if (!file) {
+    Serial.println("Failed to open config file");
+    return;
+  }
+
+  // ON VERIFIE QU'IL Y A UN FICHIER ET ON LE LIT POUR CHARGER LES DONNEES
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    int delimiterIndex = line.indexOf('=');
+    String key = line.substring(0, delimiterIndex);
+    String value = line.substring(delimiterIndex + 1);
+
+    if (key == "ssid") {
+      ssid = value;
+    } else if (key == "password") {
+      password = value;
+    } else if (key == "host") {
+      host = value;
+    } else if (key == "port") {
+      port = value.toInt();
+    }
+  }
+  file.close();
+
+
+  WiFi.begin(ssid.c_str(), password.c_str());
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -18,7 +61,7 @@ void setup() {
 
   Serial.println("Connected to WiFi");
 
-  if (!client.connect(host, port)) {
+  if (!client.connect(host.c_str(), port)) {
     Serial.println("Connection to server failed");
   } else {
     Serial.println("Connected to server");
@@ -30,6 +73,16 @@ void loop() {
     String data = "{\"distance\": 123, \"carCount\": 1}";
     client.println(data);
     Serial.println("Data sent: " + data);
+
+    
+    // Attendre une réponse de la Raspberry Pi
+    if (client.available()) {
+      String response = client.readStringUntil('\n');
+      Serial.println("Response from server: " + response);
+    } else {
+      Serial.println("No response from server");
+    }
+
   } else {
     Serial.println("Disconnected from server");
   }
