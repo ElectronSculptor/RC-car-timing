@@ -16,3 +16,5 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if not data:
                 break
             print(f"Received data: {data.decode()}")
+            response = "ACK\n"
+            conn.sendall(response.encode())
