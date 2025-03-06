@@ -1,0 +1,4 @@
+ssid=iPhone Gevorg
+password=Artur2002
+host=172.20.10.2
+port=4000
