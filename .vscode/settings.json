@@ -4,6 +4,7 @@
         "code_lidar_only": "cpp",
         "code_recepteur_lidar": "cpp",
         "code_recepteur": "cpp",
-        "code_emetteur": "cpp"
+        "code_emetteur": "cpp",
+        "code_final_esp32": "cpp"
     }
 }

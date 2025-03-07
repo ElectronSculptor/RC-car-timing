@@ -1,0 +1,78 @@
+// Dans ce code je vais tout combiner pour avoir la version finale 
+// J'aurai l'acquisition de données avec LIDAR
+// La reception radio
+// L'envoi des données via WiFi à la Raspi4
+
+
+
+// ON OUVRE LE CANAL D'ECOUTE QUAND LE LIDAR A DETECTE UN OBJET
+//PUIS ON ENVOIE LES DONNEES A LA RASPI4 VIA WIFI
+
+
+#include <Wire.h> 
+#define SLAVE_ADDRESS 0x10 // I2C Indicates the address of the secondary device
+#define COMMAND 0x00 // order
+#define DATA_LENGTH 9 // data length
+#include <RH_ASK.h> // (Radiohead)
+
+// Component Radio
+RH_ASK driver(2000, 4, 5, 0); // Recepteur sur pin G4
+
+unsigned char buf1[] = {0x5A,0x05,0x00,0x01,0x60};
+void setup() {
+  // SETUP LIDAR
+  if (!Wire.begin(17,16))
+  Serial.println("Echec de l'initialisation du LIDAR");
+
+  Serial.begin(115200); // Initializing serial port
+
+  // SETUP RADIO
+  if (!driver.init())
+  Serial.println("Echec de l'initialisation de Radiohead");
+  
+  
+}
+
+void loop() {
+    // Definition buffer pour stocker les donnees RADIO 
+    uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+    uint8_t buflen = sizeof(buf);
+
+    // FONCTION LIDAR
+  Wire.beginTransmission(SLAVE_ADDRESS);  // The I2C data transmission starts
+  Wire.write(buf1,5);                       // send instructions
+  Wire.endTransmission();                 // The I2C data transfer is complete
+  Wire.requestFrom(SLAVE_ADDRESS, DATA_LENGTH); // Request data from an I2C device
+  uint8_t data[DATA_LENGTH] = {0}; 
+  uint16_t distance = 0; // Data variable
+  int checksum = 0;
+  int index = 0; 
+  while (Wire.available() > 0 && index < DATA_LENGTH) {
+    data[index++] = Wire.read(); // Read data into an array
+  }
+  if (index == DATA_LENGTH) {
+    distance = data[2] + data[3] * 256; //  DistanceValue
+      Serial.print("Distance: ");
+      Serial.print(distance);
+      Serial.print(" cm");
+    
+  } 
+
+
+  // TEST DE LA DISTANCE ET AFFICHAGE ID VOITURE SI DETECTE
+  if (distance < 500) {
+    if (driver.recv(buf, &buflen)) 
+    {
+      int i;
+  
+      Serial.print("Message recu: ");
+  
+      for (i = 0; i < buflen; i++)
+      {
+        Serial.write(buf[i]);
+      }
+      Serial.println("");
+      delay(1000);
+    }
+  }
+}
