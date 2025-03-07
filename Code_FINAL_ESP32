@@ -21,7 +21,7 @@
 // Include for wifi
 #include <WiFi.h>
 #include <FS.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 
 
 // Wifi connection
@@ -52,12 +52,12 @@ void setup() {
 
     //-------1) WIFI CONNECTION-------
     // ON TESTE LES MEMOIRES FLASH
-  if (!SPIFFS.begin(true)) {
-    Serial.println("An error has occurred while mounting SPIFFS");
+  if (!LittleFS.begin(true)) {
+    Serial.println("An error has occurred while mounting LittleFS");
     return;
   }
 
-  File file = SPIFFS.open("/config.txt");
+  File file = LittleFS.open("/config.txt", "r");
   if (!file) {
     Serial.println("Failed to open config file");
     return;
