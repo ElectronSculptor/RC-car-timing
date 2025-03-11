@@ -1,0 +1,115 @@
+#include <Wire.h>
+#include <RH_ASK.h>
+#include <SPI.h> 
+
+#define SLAVE_ADDRESS 0x10 // Adresse I2C du périphérique secondaire
+#define COMMAND 0x00 // Commande
+#define DATA_LENGTH 9 // Longueur des données
+
+// Composant Radio
+RH_ASK driver(2000, 4, 5, 0);
+
+unsigned char buf1[] = {0x5A, 0x05, 0x00, 0x01, 0x60};
+
+// Paramètres de détection
+const int DETECTION_THRESHOLD = 500;      // Seuil de détection de voiture (cm)
+const int RESET_DISTANCE = 500;            // Seuil d'absence de voiture (cm)
+const unsigned long RF_OPEN_WINDOW = 300;  // Temps de réception RF après détection (ms)
+
+// États de détection
+enum LIDARState { NO_CAR, CAR_PRESENT };
+LIDARState currentState = NO_CAR;
+
+unsigned long lastEventTime = 0;
+unsigned int baselineDistance = 0;
+int carCount = 0;
+
+// Stockage des IDs détectés
+char lastDetectedID[10] = "";
+
+// Fonction pour recevoir les ID RF des voitures
+void receiveRF() {
+    uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+    uint8_t buflen = sizeof(buf);
+
+    if (driver.recv(buf, &buflen)) {
+        buf[buflen] = '\0'; // S'assurer que c'est une chaîne bien formée
+        Serial.print("RF ID received: ");
+        Serial.println((char*)buf);
+
+        // Vérifier si c'est un nouvel ID
+        if (strcmp((char*)buf, lastDetectedID) != 0) {
+            strcpy(lastDetectedID, (char*)buf);
+            Serial.println("New car detected!");
+        }
+    } else {
+        Serial.println("No ID received.");
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Initializing LIDAR & RF system...");
+
+    Wire.begin(17, 16); // Initialisation de la bibliothèque Wire
+
+    // Initialisation RF
+    if (!driver.init()) {
+        Serial.println("RF init failed.");
+    } else {
+        Serial.println("RF module initialized successfully.");
+    }
+
+    Serial.println("System ready. Waiting for cars...");
+}
+
+void loop() {
+    detectCar();
+}
+
+void detectCar() {
+    Wire.beginTransmission(SLAVE_ADDRESS); // Début de la transmission I2C
+    Wire.write(buf1, 5);                   // Envoi des instructions
+    Wire.endTransmission();                // Fin de la transmission I2C
+    Wire.requestFrom(SLAVE_ADDRESS, DATA_LENGTH); // Demande de données à un périphérique I2C
+
+    uint8_t data[DATA_LENGTH] = {0};
+    uint16_t distance = 0, strength = 0; // Variables de données
+    int index = 0;
+
+    while (Wire.available() > 0 && index < DATA_LENGTH) {
+        data[index++] = Wire.read(); // Lecture des données dans un tableau
+    }
+
+    if (index == DATA_LENGTH) {
+        distance = data[2] + data[3] * 256; // Valeur de la distance
+        strength = data[4] + data[5] * 256; // Intensité du signal
+        Serial.print("LIDAR reading: ");
+        Serial.print(distance);
+        Serial.println(" cm");
+
+        unsigned long now = millis();
+
+        if (distance > RESET_DISTANCE) {
+            if (currentState != NO_CAR) {
+                currentState = NO_CAR;
+                Serial.println("No car detected. Resetting state.");
+            }
+        } else if (distance < DETECTION_THRESHOLD && currentState == NO_CAR) {
+            currentState = CAR_PRESENT;
+            baselineDistance = distance;
+            lastEventTime = now;
+            carCount++;
+            Serial.print("Car detected (#");
+            Serial.print(carCount);
+            Serial.print(") Distance: ");
+            Serial.print(distance);
+            Serial.print(" cm at ");
+            Serial.print(now);
+            Serial.println(" ms");
+
+            delay(50);  // Pause courte pour stabiliser la réception RF
+            receiveRF();
+        }
+    }
+}
