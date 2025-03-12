@@ -77,12 +77,6 @@ void setup() {
 }
 
 void loop() {
-    detectCar();
-}
-
-
-
-void detectCar() {
     Wire.beginTransmission(SLAVE_ADDRESS); // Début de la transmission I2C
     Wire.write(buf1, 5);                   // Envoi des instructions
     Wire.endTransmission();                // Fin de la transmission I2C
@@ -145,12 +139,9 @@ void detectCar() {
         }
     }
     if (client.connected()) {
-        String data = "{\"distance\": distance, \"Car\": buf}";
-        "{\"ID voiture\": \"" + String((char*)buf) + "\", \"Time\": " + String(lastEventTime) + ", \"Capteur\": " + String(Capteur) + "}";
+        String data = "{\"ID voiture\": \"" + String((char*)buf) + "\", \"Time\": " + String(lastEventTime) + ", \"Capteur\": " + String(Capteur) + "}";
         client.println(data);
         Serial.println("Data sent: " + data);
-
-        
         // Attendre une réponse de la Raspberry Pi
         if (client.available()) {
         String response = client.readStringUntil('\n');
@@ -163,6 +154,5 @@ void detectCar() {
         
         Serial.println("Disconnected from server");
     }
-
-    delay(1000); // Send data every seconds
 }
+
