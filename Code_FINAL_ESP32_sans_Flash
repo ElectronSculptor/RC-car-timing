@@ -22,15 +22,9 @@
 #include <WiFi.h>
 
 
-// Wifi connection
-String ssid;
-String password;
-String host;
-uint16_t port;
-
 const char* ssid = "iPhone Gevorg";
 const char* password = "Artur2002";
-const char* host = "172.20.10.2"; // Replace with your Raspberry Pi's IP address
+const char* host = "172.20.10.4"; // Replace with your Raspberry Pi's IP address
 const uint16_t port = 4000;
 
 WiFiClient client;
@@ -41,9 +35,9 @@ WiFiClient client;
 RH_ASK driver(2000, 4, 5, 0); // Recepteur sur pin G4
 
 unsigned char buf1[] = {0x5A,0x05,0x00,0x01,0x60};
-DETECTION_THRESHOLD = 0;      // Seuil de détection de voiture (cm)
+int DETECTION_THRESHOLD = 0;      // Seuil de détection de voiture (cm)
 const int Capteur = 1; // Pour dire que c'est le capteur du tronçon 1
-
+unsigned long lastEventTime = 0;
 
 void calibrateLIDAR() {
     unsigned long startTime = millis();
@@ -126,7 +120,7 @@ void setup() {
 
 void loop() {
     // Definition buffer pour stocker les donnees RADIO 
-    uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+    uint8_t buf[3];
     uint8_t buflen = sizeof(buf);
 
     // FONCTION LIDAR
@@ -145,27 +139,26 @@ void loop() {
     distance = data[2] + data[3] * 256; //  DistanceValue
       Serial.print("Distance: ");
       Serial.print(distance);
-      Serial.print(" cm");
+      Serial.println(" cm");
     
   } 
 
-
+  lastEventTime = millis();
 
   // TEST DE LA DISTANCE ET AFFICHAGE ID VOITURE SI DETECTE
   if (distance < DETECTION_THRESHOLD) {
         if (driver.recv(buf, &buflen)){
             if (client.connected()) {
-                Serial.print("Message recu: ");
-                String message = "";
+                String ID_Voiture = "";
                 for (int i = 0; i < buflen; i++)
                 {
                 Serial.write(buf[i]);
-                message += String((char)buf[i]);
+                ID_Voiture += String((char)buf[i]);
                 }
                 Serial.println("");
                 
-
-                String data = "{\"Distance\": " + String(distance) + ", \"Voiture\": \"" + message + "\"}";
+                //String data = "{\"ID voiture\": \"" + ID_Voiture + "\", \"Time\": " + String(lastEventTime) + ", \"Capteur\": " + String(Capteur) + "}";
+                String data = String(ID_Voiture) + "," + String(lastEventTime) + "," + String(Capteur) + "\n";
                 client.println(data);
                 Serial.println("Data sent: " + data);
             
@@ -183,5 +176,5 @@ void loop() {
                 }
             }   
         }
-    delay(1000); // Send data every seconds
+    delay(5); // Send data every seconds
     }
