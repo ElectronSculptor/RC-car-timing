@@ -24,8 +24,8 @@ RH_ASK driver(2000, 4, 5, 0);
 unsigned char buf1[] = {0x5A, 0x05, 0x00, 0x01, 0x60};
 
 // Paramètres de détection
-const int DETECTION_THRESHOLD = 500;      // Seuil de détection de voiture (cm)
-const int RESET_DISTANCE = 500;            // Seuil d'absence de voiture (cm)
+int DETECTION_THRESHOLD = 0;      // Seuil de détection de voiture (cm)
+int RESET_DISTANCE = 0;            // Seuil d'absence de voiture (cm)
 const unsigned long RF_OPEN_WINDOW = 300;  // Temps de réception RF après détection (ms)
 const int Capteur = 1; // Pour dire que c'est le capteur du tronçon 1
 
@@ -41,6 +41,47 @@ int carCount = 0;
 
 // Stockage des IDs détectés
 char lastDetectedID[10] = "";
+
+
+
+void calibrateLIDAR() {
+    unsigned long startTime = millis();
+    unsigned long endTime = startTime + 5000; // 5 secondes
+    unsigned long sumDistances = 0;
+    int count = 0;
+
+    while (millis() < endTime) {
+        Wire.beginTransmission(SLAVE_ADDRESS);
+        Wire.write(buf1, 5);
+        Wire.endTransmission();
+        Wire.requestFrom(SLAVE_ADDRESS, DATA_LENGTH);
+
+        uint8_t data[DATA_LENGTH] = {0};
+        int index = 0;
+
+        while (Wire.available() > 0 && index < DATA_LENGTH) {
+            data[index++] = Wire.read();
+        }
+
+        if (index == DATA_LENGTH) {
+            uint16_t distance = data[2] + data[3] * 256;
+            sumDistances += distance;
+            count++;
+        }
+
+        delay(50); // Attendre un peu avant la prochaine lecture
+    }
+
+    if (count > 0) {
+        DETECTION_THRESHOLD = sumDistances / count;
+        Serial.print("Calibration complete. Average distance: ");
+        Serial.print(DETECTION_THRESHOLD);
+        Serial.println(" cm");
+    } else {
+        Serial.println("Calibration failed. No valid readings.");
+    }
+}
+
 
 
 
@@ -73,7 +114,12 @@ void setup() {
         Serial.println("RF module initialized successfully.");
     }
 
+
+    // 4) CALIBRATION DU LIDAR
+    calibrateLIDAR();
+
     Serial.println("System ready. Waiting for cars...");
+    delay(3000);
 }
 
 void loop() {

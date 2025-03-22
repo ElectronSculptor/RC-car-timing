@@ -10,8 +10,7 @@ Chaque seconde, envoie un nombre grâce à un émetteur 433 MHz
 
 RH_ASK driver(2000, 4, 12, 0);
 
-char message[RH_ASK_MAX_MESSAGE_LEN]; 
-int compteur = 0;
+char message[RH_ASK_MAX_MESSAGE_LEN];
 
 void setup()
 {
@@ -23,8 +22,8 @@ void setup()
 void loop()
 {
 
-  // ON ENVOIE UN ID UNIQUE, 450 PAR EXEMPLE
-  sprintf(message, "%d", 450); 
+  // ON ENVOIE UN ID PROPRE A LA VOITURE
+  sprintf(message, "%d", 7); 
 
   driver.send((uint8_t *)message, strlen(message));
   driver.waitPacketSent();
