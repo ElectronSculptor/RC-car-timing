@@ -152,7 +152,7 @@ void loop() {
 
 
   // TEST DE LA DISTANCE ET AFFICHAGE ID VOITURE SI DETECTE
-  if (distance < 300) {
+  if (distance < DETECTION_THRESHOLD) {
         if (driver.recv(buf, &buflen)){
             if (client.connected()) {
                 Serial.print("Message recu: ");
