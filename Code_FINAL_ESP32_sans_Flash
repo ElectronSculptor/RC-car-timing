@@ -41,11 +41,54 @@ WiFiClient client;
 RH_ASK driver(2000, 4, 5, 0); // Recepteur sur pin G4
 
 unsigned char buf1[] = {0x5A,0x05,0x00,0x01,0x60};
+DETECTION_THRESHOLD = 0;      // Seuil de détection de voiture (cm)
+const int Capteur = 1; // Pour dire que c'est le capteur du tronçon 1
+
+
+void calibrateLIDAR() {
+    unsigned long startTime = millis();
+    unsigned long endTime = startTime + 5000; // 5 secondes
+    unsigned long sumDistances = 0;
+    int count = 0;
+    Serial.println("Lidar Calibration");
+
+    while (millis() < endTime) {
+        Wire.beginTransmission(SLAVE_ADDRESS);
+        Wire.write(buf1, 5);
+        Wire.endTransmission();
+        Wire.requestFrom(SLAVE_ADDRESS, DATA_LENGTH);
+
+        uint8_t data[DATA_LENGTH] = {0};
+        int index = 0;
+
+        while (Wire.available() > 0 && index < DATA_LENGTH) {
+            data[index++] = Wire.read();
+        }
+
+        if (index == DATA_LENGTH) {
+            uint16_t distance = data[2] + data[3] * 256;
+            sumDistances += distance;
+            count++;
+        }
+
+        delay(50); // Attendre un peu avant la prochaine lecture
+    }
+
+    if (count > 0) {
+        DETECTION_THRESHOLD = (sumDistances / count) - 5;
+        Serial.print("Calibration complete. Average distance: ");
+        Serial.print(DETECTION_THRESHOLD);
+        Serial.println(" cm");
+    } else {
+        Serial.println("Calibration failed. No valid readings.");
+    }
+}
 
 
 
 void setup() {
 
+    Serial.begin(115200); // Initializing serial port
     //-------1) WIFI CONNECTION-------
 
   WiFi.begin(ssid, password);
@@ -69,12 +112,16 @@ void setup() {
   if (!Wire.begin(17,16))
   Serial.println("Echec de l'initialisation du LIDAR");
 
-  Serial.begin(115200); // Initializing serial port
+  
 
   //-------3) RADIO SETUP-------
   if (!driver.init())
   Serial.println("Echec de l'initialisation de Radiohead");
   
+  //-------4) CALIBRATION LIDAR-------
+  calibrateLIDAR();
+  delay(4000);
+  Serial.println("System ready. Waiting for cars...");
 }
 
 void loop() {
