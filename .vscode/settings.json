@@ -6,6 +6,7 @@
         "code_recepteur": "cpp",
         "code_emetteur": "cpp",
         "code_final_esp32": "cpp",
-        "code_yahya": "cpp"
+        "code_yahya": "cpp",
+        "code_final_esp32_sans_flash": "cpp"
     }
 }
