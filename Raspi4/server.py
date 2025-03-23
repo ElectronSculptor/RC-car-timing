@@ -1,5 +1,9 @@
 import socket
 from time import sleep
+import pandas as pd
+
+
+
 
 HOST = '0.0.0.0'  # Listen on all interfaces
 PORT = 4000  # Port to listen on
@@ -42,5 +46,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     Data[ID_Voiture-1][0].append(Time)
                     Data[ID_Voiture-1][1].append(Capteur)
                     print(Data)
+                    # Création du DataFrame
+                    df = pd.DataFrame(Data, columns=["Temps", "Capteur"])
+                    print(df)
             else:
                 break
